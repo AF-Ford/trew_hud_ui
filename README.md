@@ -15,3 +15,7 @@ https://github.com/vortisrd/trew_hud_ui
 
 [Mythic Notify] is required
 https://github.com/mythicrp/mythic_notify
+
+# Support
+
+You can find support in my discord: https://discord.gg/XsUvj4A
