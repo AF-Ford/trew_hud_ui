@@ -12,3 +12,6 @@ Add start trew_hud_ui to your server.cfg
 
 Simply install the same way you would install the original version and then you should be good to go.
 https://github.com/vortisrd/trew_hud_ui
+
+[Mythic Notify] is required
+https://github.com/mythicrp/mythic_notify
