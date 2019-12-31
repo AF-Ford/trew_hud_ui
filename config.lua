@@ -1,6 +1,16 @@
-Config = {}
+Config = {
+	blip = {
+		blipText = 'Postal Route %s',
+		sprite = 8,
+		color = 3, -- default 3 (light blue)
+		distToDelete = 100.0, -- in meters
+		deleteText = 'Route deleted',
+		drawRouteText = 'Drawing a route to %s',
+		notExistText = "That postal doesn't exist"
+	}
+}
 
-Config.Locale = 'br'
+Config.Locale = 'en'
 
 Config.serverLogo = 'https://i.imgur.com/AcgDL9f.png'
 
@@ -30,12 +40,11 @@ Config.voice = {
 
 
 Config.vehicle = {
-	speedUnit = 'KMH',
+	speedUnit = 'MPH',
 	maxSpeed = 240,
 
 	keys = {
-		seatbelt 	= 'K',
-		cruiser		= 'CAPS',
+		seatbelt 	= 'B',
 		signalLeft	= 'LEFT',
 		signalRight	= 'RIGHT',
 		signalBoth	= 'DOWN',
@@ -43,7 +52,7 @@ Config.vehicle = {
 }
 
 Config.ui = {
-	showServerLogo		= true,
+	showServerLogo		= false,
 
 	showJob		 		= true,
 
@@ -52,8 +61,9 @@ Config.ui = {
 	showBlackMoney 		= true,
 	showSocietyMoney	= true,
 
-	showDate 			= true,
+	showDate 			= false,
 	showLocation 		= true,
+	showPostal			= true,
 	showVoice	 		= true,
 
 	showHealth			= true,
@@ -66,3 +76,4 @@ Config.ui = {
 
 	showWeapons			= true,	
 }
+

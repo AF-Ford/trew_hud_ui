@@ -4,6 +4,7 @@ description 'Trew HUD UI'
 
 ui_page 'html/ui.html'
 
+local postalFile = 'new-postals.json'
 
 files {
 	'html/ui.html',
@@ -136,3 +137,8 @@ server_scripts {
 dependencies {
 	'es_extended'
 }
+
+file(postalFile)
+postal_file(postalFile)
+
+file 'version.json'

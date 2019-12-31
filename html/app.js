@@ -80,6 +80,7 @@ window.onload = function () {
 				if (config.showJob == true) { document.querySelector('#job').style.display = 'block'; }
 				if (config.showDate == true) { document.querySelector('#date').style.display = 'block'; }
 				if (config.showLocation == true) { document.querySelector('#location').style.display = 'block'; }
+				if (config.showPostal == true) { document.querySelector('#postal').style.display = 'block'; }
 				
 				if (config.showVoice == true) { document.querySelector('#voice').style.display = 'block'; }
 				else if (config.showVoice == false) { document.querySelector('.info.time-and-place').style.right = '25px'; }
@@ -108,13 +109,11 @@ window.onload = function () {
 				eventCallback['setText'](data);
 			},
 
-
 			isTalking: function(data) {
 				var voiceId = document.querySelector('#voice');
 				if (data.value) { voiceId.classList.add('speak'); }
 				else { voiceId.classList.remove('speak'); }
 			},
-
 
 			setVoiceDistance: function(data) {
 				var voiceId = document.querySelector('#voice');
@@ -302,10 +301,9 @@ window.onload = function () {
 
 
 					if ( (data.seatbelt.status == true) && (vehicleSeatbelt.classList.contains('on') == false) ) {
+						eventCallback.sound('sounds/seatbelt-buckle.ogg', { volume: '0.50' });
 						vehicleSeatbelt.classList.remove('off');
 						vehicleSeatbelt.classList.add('on');
-
-						eventCallback.sound('sounds/seatbelt-buckle.ogg', { volume: '0.50' });
 					}
 					else if ( (data.seatbelt.status == false) && (vehicleSeatbelt.classList.contains('off') == false) ) {
 						vehicleSeatbelt.classList.remove('on');

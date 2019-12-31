@@ -34,3 +34,8 @@ RegisterServerEvent('trew_hud_ui:syncCarLights')
 AddEventHandler('trew_hud_ui:syncCarLights', function(status)
 	TriggerClientEvent('trew_hud_ui:syncCarLights', -1, source, status)
 end)
+
+RegisterServerEvent('trew_hud_ui:PlayWithinDistance')
+AddEventHandler('trew_hud_ui:PlayWithinDistance', function(maxDistance, soundFile, soundVolume)
+    TriggerClientEvent('trew_hud_ui:PlayWithinDistance', -1, source, maxDistance, soundFile, soundVolume)
+end)

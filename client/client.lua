@@ -1,3 +1,193 @@
+local raw = LoadResourceFile(GetCurrentResourceName(), GetResourceMetadata(GetCurrentResourceName(), 'postal_file'))
+local postals = json.decode(raw)
+local nearest = nil
+local pBlip = nil
+
+-- thread for nearest and blip
+Citizen.CreateThread(
+	function()
+		while true do
+			local x, y = table.unpack(GetEntityCoords(GetPlayerPed(-1)))
+
+			local ndm = -1 -- nearest distance magnitude
+			local ni = -1 -- nearest index
+			for i, p in ipairs(postals) do
+				local dm = (x - p.x) ^ 2 + (y - p.y) ^ 2 -- distance magnitude
+				if ndm == -1 or dm < ndm then
+					ni = i
+					ndm = dm
+				end
+			end
+
+			--setting the nearest
+			if ni ~= -1 then
+				local nd = math.sqrt(ndm) -- nearest distance
+				nearest = {i = ni, d = nd}
+			end
+
+			-- if blip exists
+			if pBlip then
+				local b = {x = pBlip.p.x, y = pBlip.p.y} -- blip coords
+				local dm = (b.x - x) ^ 2 + (b.y - y) ^ 2 -- distance magnitude
+				if dm < config.blip.distToDelete ^ 2 then
+					-- delete blip if close
+					RemoveBlip(pBlip.hndl)
+					pBlip = nil
+				end
+			end
+
+			Wait(100)
+		end
+	end
+)
+
+RegisterCommand(
+	'postal',
+	function(source, args, raw)
+		if #args < 1 then
+			if pBlip then
+				RemoveBlip(pBlip.hndl)
+				pBlip = nil
+				TriggerEvent(
+					'chat:addMessage',
+					{
+						color = {255, 0, 0},
+						args = {
+							'Postals',
+							config.blip.deleteText
+						}
+					}
+				)
+			end
+			return
+		end
+		local n = string.upper(args[1])
+
+		local fp = nil
+		for _, p in ipairs(postals) do
+			if string.upper(p.code) == n then
+				fp = p
+			end
+		end
+
+		if fp then
+			if pBlip then
+				RemoveBlip(pBlip.hndl)
+			end
+			pBlip = {hndl = AddBlipForCoord(fp.x, fp.y, 0.0), p = fp}
+			SetBlipRoute(pBlip.hndl, true)
+			SetBlipSprite(pBlip.hndl, config.blip.sprite)
+			SetBlipColour(pBlip.hndl, config.blip.color)
+			SetBlipRouteColour(pBlip.hndl, config.blip.color)
+			BeginTextCommandSetBlipName('STRING')
+			AddTextComponentSubstringPlayerName(config.blip.blipText:format(pBlip.p.code))
+			EndTextCommandSetBlipName(pBlip.hndl)
+
+			TriggerEvent(
+				'chat:addMessage',
+				{
+					color = {255, 0, 0},
+					args = {
+						'Postals',
+						config.blip.drawRouteText:format(fp.code)
+					}
+				}
+			)
+		else
+			TriggerEvent(
+				'chat:addMessage',
+				{
+					color = {255, 0, 0},
+					args = {
+						'Postals',
+						config.blip.notExistText
+					}
+				}
+			)
+		end
+	end
+)
+
+--[[Development shit]]
+local dev = false
+if dev then
+	local devLocal = json.decode(raw)
+	local next = 0
+
+	RegisterCommand(
+		'setnext',
+		function(src, args, raw)
+			local n = tonumber(args[1])
+			if n ~= nil then
+				next = n
+				print('next ' .. next)
+				return
+			end
+			print('invalid ' .. n)
+		end
+	)
+	RegisterCommand(
+		'next',
+		function(src, args, raw)
+			for i, d in ipairs(devLocal) do
+				if d.code == tostring(next) then
+					print('duplicate ' .. next)
+					return
+				end
+			end
+			local coords = GetEntityCoords(GetPlayerPed(-1))
+			table.insert(devLocal, {code = tostring(next), x = coords.x, y = coords.y})
+			print('insert ' .. next)
+			next = next + 1
+		end
+	)
+	RegisterCommand(
+		'rl',
+		function(src, args, raw)
+			if #devLocal > 0 then
+				local data = table.remove(devLocal, #devLocal)
+				print('remove ' .. data.code)
+				print('next ' .. next)
+				next = next - 1
+			else
+				print('invalid')
+			end
+		end
+	)
+	RegisterCommand(
+		'remove',
+		function(src, args, raw)
+			if #args < 1 then
+				print('invalid')
+			else
+				for i, d in ipairs(devLocal) do
+					if d.code == args[1] then
+						table.remove(devLocal, i)
+						print('remove ' .. d.code)
+						return
+					end
+				end
+				print('invalid')
+			end
+		end
+	)
+	RegisterCommand(
+		'json',
+		function(src, args, raw)
+			print(json.encode(devLocal))
+		end
+	)
+end
+
+
+
+
+
+
+
+
+
+
 local ESX	 = nil
 
 -- ESX
@@ -15,10 +205,6 @@ Citizen.CreateThread(function()
 end)
 
 
-
-
-
-
 local zones = { ['AIRP'] = "Los Santos International Airport", ['ALAMO'] = "Alamo Sea", ['ALTA'] = "Alta", ['ARMYB'] = "Fort Zancudo", ['BANHAMC'] = "Banham Canyon Dr", ['BANNING'] = "Banning", ['BEACH'] = "Vespucci Beach", ['BHAMCA'] = "Banham Canyon", ['BRADP'] = "Braddock Pass", ['BRADT'] = "Braddock Tunnel", ['BURTON'] = "Burton", ['CALAFB'] = "Calafia Bridge", ['CANNY'] = "Raton Canyon", ['CCREAK'] = "Cassidy Creek", ['CHAMH'] = "Chamberlain Hills", ['CHIL'] = "Vinewood Hills", ['CHU'] = "Chumash", ['CMSW'] = "Chiliad Mountain State Wilderness", ['CYPRE'] = "Cypress Flats", ['DAVIS'] = "Davis", ['DELBE'] = "Del Perro Beach", ['DELPE'] = "Del Perro", ['DELSOL'] = "La Puerta", ['DESRT'] = "Grand Senora Desert", ['DOWNT'] = "Downtown", ['DTVINE'] = "Downtown Vinewood", ['EAST_V'] = "East Vinewood", ['EBURO'] = "El Burro Heights", ['ELGORL'] = "El Gordo Lighthouse", ['ELYSIAN'] = "Elysian Island", ['GALFISH'] = "Galilee", ['GOLF'] = "GWC and Golfing Society", ['GRAPES'] = "Grapeseed", ['GREATC'] = "Great Chaparral", ['HARMO'] = "Harmony", ['HAWICK'] = "Hawick", ['HORS'] = "Vinewood Racetrack", ['HUMLAB'] = "Humane Labs and Research", ['JAIL'] = "Bolingbroke Penitentiary", ['KOREAT'] = "Little Seoul", ['LACT'] = "Land Act Reservoir", ['LAGO'] = "Lago Zancudo", ['LDAM'] = "Land Act Dam", ['LEGSQU'] = "Legion Square", ['LMESA'] = "La Mesa", ['LOSPUER'] = "La Puerta", ['MIRR'] = "Mirror Park", ['MORN'] = "Morningwood", ['MOVIE'] = "Richards Majestic", ['MTCHIL'] = "Mount Chiliad", ['MTGORDO'] = "Mount Gordo", ['MTJOSE'] = "Mount Josiah", ['MURRI'] = "Murrieta Heights", ['NCHU'] = "North Chumash", ['NOOSE'] = "N.O.O.S.E", ['OCEANA'] = "Pacific Ocean", ['PALCOV'] = "Paleto Cove", ['PALETO'] = "Paleto Bay", ['PALFOR'] = "Paleto Forest", ['PALHIGH'] = "Palomino Highlands", ['PALMPOW'] = "Palmer-Taylor Power Station", ['PBLUFF'] = "Pacific Bluffs", ['PBOX'] = "Pillbox Hill", ['PROCOB'] = "Procopio Beach", ['RANCHO'] = "Rancho", ['RGLEN'] = "Richman Glen", ['RICHM'] = "Richman", ['ROCKF'] = "Rockford Hills", ['RTRAK'] = "Redwood Lights Track", ['SANAND'] = "San Andreas", ['SANCHIA'] = "San Chianski Mountain Range", ['SANDY'] = "Sandy Shores", ['SKID'] = "Mission Row", ['SLAB'] = "Stab City", ['STAD'] = "Maze Bank Arena", ['STRAW'] = "Strawberry", ['TATAMO'] = "Tataviam Mountains", ['TERMINA'] = "Terminal", ['TEXTI'] = "Textile City", ['TONGVAH'] = "Tongva Hills", ['TONGVAV'] = "Tongva Valley", ['VCANA'] = "Vespucci Canals", ['VESP'] = "Vespucci", ['VINE'] = "Vinewood", ['WINDF'] = "Ron Alternates Wind Farm", ['WVINE'] = "West Vinewood", ['ZANCUDO'] = "Zancudo River", ['ZP_ORT'] = "Port of South Los Santos", ['ZQ_UAR'] = "Davis Quartz" }
 
 local Keys = {
@@ -26,13 +212,9 @@ local Keys = {
 }
 
 local AllWeapons = json.decode('{"melee":{"dagger":"0x92A27487","bat":"0x958A4A8F","bottle":"0xF9E6AA4B","crowbar":"0x84BD7BFD","unarmed":"0xA2719263","flashlight":"0x8BB05FD7","golfclub":"0x440E4788","hammer":"0x4E875F73","hatchet":"0xF9DCBF2D","knuckle":"0xD8DF3C3C","knife":"0x99B507EA","machete":"0xDD5DF8D9","switchblade":"0xDFE37640","nightstick":"0x678B81B1","wrench":"0x19044EE0","battleaxe":"0xCD274149","poolcue":"0x94117305","stone_hatchet":"0x3813FC08"},"handguns":{"pistol":"0x1B06D571","pistol_mk2":"0xBFE256D4","combatpistol":"0x5EF9FEC4","appistol":"0x22D8FE39","stungun":"0x3656C8C1","pistol50":"0x99AEEB3B","snspistol":"0xBFD21232","snspistol_mk2":"0x88374054","heavypistol":"0xD205520E","vintagepistol":"0x83839C4","flaregun":"0x47757124","marksmanpistol":"0xDC4DB296","revolver":"0xC1B3C3D1","revolver_mk2":"0xCB96392F","doubleaction":"0x97EA20B8","raypistol":"0xAF3696A1"},"smg":{"microsmg":"0x13532244","smg":"0x2BE6766B","smg_mk2":"0x78A97CD0","assaultsmg":"0xEFE7E2DF","combatpdw":"0xA3D4D34","machinepistol":"0xDB1AA450","minismg":"0xBD248B55","raycarbine":"0x476BF155"},"shotguns":{"pumpshotgun":"0x1D073A89","pumpshotgun_mk2":"0x555AF99A","sawnoffshotgun":"0x7846A318","assaultshotgun":"0xE284C527","bullpupshotgun":"0x9D61E50F","musket":"0xA89CB99E","heavyshotgun":"0x3AABBBAA","dbshotgun":"0xEF951FBB","autoshotgun":"0x12E82D3D"},"assault_rifles":{"assaultrifle":"0xBFEFFF6D","assaultrifle_mk2":"0x394F415C","carbinerifle":"0x83BF0278","carbinerifle_mk2":"0xFAD1F1C9","advancedrifle":"0xAF113F99","specialcarbine":"0xC0A3098D","specialcarbine_mk2":"0x969C3D67","bullpuprifle":"0x7F229F94","bullpuprifle_mk2":"0x84D6FAFD","compactrifle":"0x624FE830"},"machine_guns":{"mg":"0x9D07F764","combatmg":"0x7FD62962","combatmg_mk2":"0xDBBD7280","gusenberg":"0x61012683"},"sniper_rifles":{"sniperrifle":"0x5FC3C11","heavysniper":"0xC472FE2","heavysniper_mk2":"0xA914799","marksmanrifle":"0xC734385A","marksmanrifle_mk2":"0x6A6C02E0"},"heavy_weapons":{"rpg":"0xB1CA77B1","grenadelauncher":"0xA284510B","grenadelauncher_smoke":"0x4DD2DC56","minigun":"0x42BF8A85","firework":"0x7F7497E5","railgun":"0x6D544C99","hominglauncher":"0x63AB0442","compactlauncher":"0x781FE4A","rayminigun":"0xB62D1F67"},"throwables":{"grenade":"0x93E220BD","bzgas":"0xA0973D5E","smokegrenade":"0xFDBC8A50","flare":"0x497FACC3","molotov":"0x24B17070","stickybomb":"0x2C3731D9","proxmine":"0xAB564B93","snowball":"0x787F0BB","pipebomb":"0xBA45E8B8","ball":"0x23C9F95C"},"misc":{"petrolcan":"0x34A67B97","fireextinguisher":"0x60EC506","parachute":"0xFBAB5776"}}')
-
-
-
-
 local vehiclesCars = {0,1,2,3,4,5,6,7,8,9,10,11,12,17,18,19,20};
 
-
+local isTokovoip = true
 
 -- Hides TREW UI when it's on Pause Menu
 Citizen.CreateThread(function()
@@ -69,25 +251,6 @@ Citizen.CreateThread(function()
 
 	end
 end)
-
-
-
-
-
-
--- Date and time update
-Citizen.CreateThread(function()
-	while true do
-		Citizen.Wait(1000)
-		if Config.ui.showDate == true then
-			SendNUIMessage({ action = 'setText', id = 'date', value = trewDate() })
-		end
-	end
-end)
-
-
-
-
 
 -- Location update
 Citizen.CreateThread(function()
@@ -126,7 +289,7 @@ end)
 
 
 -- Vehicle Info
-local vehicleCruiser
+--local vehicleCruiser
 local vehicleSignalIndicator = 'off'
 local seatbeltEjectSpeed = 45.0 
 local seatbeltEjectAccel = 100.0
@@ -173,8 +336,6 @@ Citizen.CreateThread(function()
 			else
 				vehicleNailSpeed = math.ceil(  280 - math.ceil( math.ceil(vehicleSpeed * 205) / Config.vehicle.maxSpeed) )
 			end
-
-
 			
 			-- Vehicle Fuel and Gear
 			local vehicleFuel
@@ -199,11 +360,6 @@ Citizen.CreateThread(function()
 				vehicleIsLightsOn = 'off'
 			end
 
-
-
-
-
-
 			-- Vehicle Siren
 			local vehicleSiren
 
@@ -213,11 +369,6 @@ Citizen.CreateThread(function()
 				vehicleSiren = false
 			end
 
-
-
-
-
-
 			-- Vehicle Seatbelt
 			if has_value(vehiclesCars, vehicleClass) == true and vehicleClass ~= 8 then
 
@@ -226,23 +377,26 @@ Citizen.CreateThread(function()
 
                 SetPedConfigFlag(PlayerPedId(), 32, true)
 
-                if not seatbeltIsOn then
-                	local vehIsMovingFwd = GetEntitySpeedVector(vehicle, true).y > 1.0
-                    local vehAcc = (prevSpeed - currSpeed) / GetFrameTime()
-                    if (vehIsMovingFwd and (prevSpeed > (seatbeltEjectSpeed/2.237)) and (vehAcc > (seatbeltEjectAccel*9.81))) then
+				if not seatbeltIsOn then
+					local vehIsMovingFwd = GetEntitySpeedVector(vehicle, true).y > 1.0
+					local vehAcc = (prevSpeed - currSpeed) / GetFrameTime()
+					if (vehIsMovingFwd and (prevSpeed > (seatbeltEjectSpeed/2.237)) and (vehAcc > (seatbeltEjectAccel*9.81))) then
 
-                        SetEntityCoords(player, position.x, position.y, position.z - 0.47, true, true, true)
-                        SetEntityVelocity(player, prevVelocity.x, prevVelocity.y, prevVelocity.z)
-                        SetPedToRagdoll(player, 1000, 1000, 0, 0, 0, 0)
-                    else
-                        -- Update previous velocity for ejecting player
-                        prevVelocity = GetEntityVelocity(vehicle)
-                    end
-
-                else
-
-                	DisableControlAction(0, 75)
-
+						SetEntityCoords(player, position.x, position.y, position.z - 0.47, true, true, true)
+						SetEntityVelocity(player, prevVelocity.x, prevVelocity.y, prevVelocity.z)
+						SetPedToRagdoll(player, 1000, 1000, 0, 0, 0, 0)
+					else
+						prevVelocity = GetEntityVelocity(vehicle)
+					end
+				else
+					local vehIsMovingFwd = GetEntitySpeedVector(vehicle, true).y > 1.0
+					local vehAcc = (prevSpeed - currSpeed) / GetFrameTime()
+					if (vehIsMovingFwd and (prevSpeed > (seatbeltEjectSpeed/2.237)) and (vehAcc > (seatbeltEjectAccel*9.81))) then
+						DoScreenFadeOut(2000)
+						Citizen.Wait(2000)
+						DoScreenFadeIn(1750)
+					end
+					DisableControlAction(0, 75)
                 end
 
 
@@ -261,7 +415,7 @@ Citizen.CreateThread(function()
 				fuel = vehicleFuel,
 				lights = vehicleIsLightsOn,
 				signals = vehicleSignalIndicator,
-				cruiser = vehicleCruiser,
+				--cruiser = vehicleCruiser,
 				type = vehicleClass,
 				siren = vehicleSiren,
 				seatbelt = {},
@@ -276,7 +430,7 @@ Citizen.CreateThread(function()
 		else
 
 			
-			vehicleCruiser = false
+			--vehicleCruiser = false
 			vehicleNailSpeed = 0
 			vehicleSignalIndicator = 'off'
 
@@ -288,7 +442,6 @@ Citizen.CreateThread(function()
 				status = false,
 				nail = vehicleNailSpeed,
 				seatbelt = { status = seatbeltIsOn },
-				cruiser = vehicleCruiser,
 				signals = vehicleSignalIndicator,
 				type = 0,
 			}
@@ -301,10 +454,6 @@ Citizen.CreateThread(function()
 
 		SendNUIMessage(vehicleInfo)
 
-
-
-
-
 	end
 end)
 
@@ -313,7 +462,6 @@ end)
 
 -- Player status
 Citizen.CreateThread(function()
-
 	while true do
 		Citizen.Wait(1000)
 
@@ -362,7 +510,6 @@ Citizen.CreateThread(function()
 
 	end
 end)
-
 
 -- Overall Info
 RegisterNetEvent('trew_hud_ui:setInfo')
@@ -422,10 +569,20 @@ AddEventHandler('trew_hud_ui:setInfo', function(info)
 	if showPlayerStatus > 0 then
 		SendNUIMessage(playerStatus)
 	end
-
-
 end)
 
+--Network Talking Updates
+--[[
+Citizen.CreateThread(function()
+    while true do
+		if Config.ui.showVoice == true then
+			if isTokovoip == true then
+				isTalking = exports.tokovoip_script:getPlayerData(GetPlayerServerId(PlayerId()), 'voip:talking')
+				SendNUIMessage({ action = 'isTalking', value = isTalking })
+			end
+		end
+    end
+end)--]]
 
 -- Voice detection and distance
 Citizen.CreateThread(function()
@@ -439,8 +596,8 @@ Citizen.CreateThread(function()
 	        Citizen.Wait(300)
 	        local playerID = PlayerId()
 
-	        for _,player in ipairs(GetActivePlayers()) do
-	            local boolTalking = NetworkIsPlayerTalking(player)
+			for _,player in ipairs(GetActivePlayers()) do
+				local boolTalking = exports.tokovoip_script:getPlayerData(GetPlayerServerId(PlayerId()), 'voip:talking')
 
 	            if player ~= playerID then
 	                if boolTalking then
@@ -455,48 +612,36 @@ Citizen.CreateThread(function()
 	end
 end)
 
-
-
 Citizen.CreateThread(function()
 	if Config.ui.showVoice == true then
-
-
-
-		local isTalking = false
 		local voiceDistance = nil
-
+		local currLevel = 1
+		
 		while true do
-			Citizen.Wait(1)
+			Citizen.Wait(0)
 
+			isTalking = exports.tokovoip_script:getPlayerData(GetPlayerServerId(PlayerId()), 'voip:talking')
+			SendNUIMessage({ action = 'isTalking', value = isTalking })
 
-
-
-			if NetworkIsPlayerTalking(PlayerId()) and not isTalking then 
-				isTalking = not isTalking
-				SendNUIMessage({ action = 'isTalking', value = isTalking })
-			elseif not NetworkIsPlayerTalking(PlayerId()) and isTalking then 
-				isTalking = not isTalking
-				SendNUIMessage({ action = 'isTalking', value = isTalking })
-			end
-
-
-
-			if IsControlJustPressed(1, Keys[Config.voice.keys.distance]) then
-
-				Config.voice.levels.current = (Config.voice.levels.current + 1) % 3
-
-				if Config.voice.levels.current == 0 then
-					NetworkSetTalkerProximity(Config.voice.levels.default)
-					voiceDistance = 'normal'
-				elseif Config.voice.levels.current == 1 then
-					NetworkSetTalkerProximity(Config.voice.levels.shout)
-					voiceDistance = 'shout'
-				elseif Config.voice.levels.current == 2 then
-					NetworkSetTalkerProximity(Config.voice.levels.whisper)
-					voiceDistance = 'whisper'
+			
+			if IsControlJustReleased(1, 20) then
+				if isTokovoip == true then
+					currLevel =  exports.tokovoip_script:getPlayerData(GetPlayerServerId(PlayerId()), 'voip:mode')
+					if currLevel == 1 then
+						Config.voice.levels.current = 0
+						voiceDistance = 'normal'
+						exports['mythic_notify']:SendAlert('success', 'You switched to normal voice distance.', 2500, { ['background-color'] = '#18b70b', ['color'] = '#ffffff' })
+					elseif currLevel == 2 then
+						Config.voice.levels.current = 2
+						voiceDistance = 'whisper'
+						exports['mythic_notify']:SendAlert('success', 'You switched to whisper voice distance.', 2500, { ['background-color'] = '#ffb700', ['color'] = '#ffffff' })
+					elseif currLevel == 3 then
+						Config.voice.levels.current = 1
+						voiceDistance = 'shout'
+						exports['mythic_notify']:SendAlert('success', 'You switched to shout voice distance.', 2500, { ['background-color'] = '#ff0000', ['color'] = '#ffffff' })
+					end
+					SendNUIMessage({ action = 'setVoiceDistance', value = voiceDistance })
 				end
-
-				SendNUIMessage({ action = 'setVoiceDistance', value = voiceDistance })
 			end
 
 			if Config.voice.levels.current == 0 then
@@ -506,17 +651,9 @@ Citizen.CreateThread(function()
 			elseif Config.voice.levels.current == 2 then
 				voiceDistance = 'whisper'
 			end
-
-
 		end
-
-
-
-
-
 	end
 end)
-
 
 
 
@@ -524,27 +661,19 @@ end)
 Citizen.CreateThread(function()
 	if Config.ui.showWeapons == true then
 		while true do
-			Citizen.Wait(100)
-
+			Citizen.Wait(500)
 			local player = GetPlayerPed(-1)
 			local status = {}
-
 			if IsPedArmed(player, 7) then
-
 				local weapon = GetSelectedPedWeapon(player)
 				local ammoTotal = GetAmmoInPedWeapon(player,weapon)
 				local bool,ammoClip = GetAmmoInClip(player,weapon)
 				local ammoRemaining = math.floor(ammoTotal - ammoClip)
-				
 				status['armed'] = true
-
 				for key,value in pairs(AllWeapons) do
-
 					for keyTwo,valueTwo in pairs(AllWeapons[key]) do
 						if weapon == GetHashKey('weapon_'..keyTwo) then
 							status['weapon'] = keyTwo
-
-
 							if key == 'melee' then
 								SendNUIMessage({ action = 'element', task = 'disable', value = 'weapon_bullets' })
 								SendNUIMessage({ action = 'element', task = 'disable', value = 'bullets' })
@@ -557,36 +686,18 @@ Citizen.CreateThread(function()
 									SendNUIMessage({ action = 'element', task = 'enable', value = 'bullets' })
 								end
 							end
-
 						end
 					end
-
 				end
-
 				SendNUIMessage({ action = 'setText', id = 'weapon_clip', value = ammoClip })
 				SendNUIMessage({ action = 'setText', id = 'weapon_ammo', value = ammoRemaining })
-
 			else
 				status['armed'] = false	
 			end
-
 			SendNUIMessage({ action = 'updateWeapon', status = status })
-
 		end
 	end
 end)
-
-
-
-
-
-
-
-
-
-
-
-
 
 -- Everything that neededs to be at WAIT 0
 Citizen.CreateThread(function()
@@ -601,28 +712,23 @@ Citizen.CreateThread(function()
 		-- Vehicle Seatbelt
 		if IsPedInAnyVehicle(player, false) and GetIsVehicleEngineRunning(vehicle) then
 			if IsControlJustReleased(0, Keys[Config.vehicle.keys.seatbelt]) and (has_value(vehiclesCars, vehicleClass) == true and vehicleClass ~= 8) then
+				exports['mythic_progbar']:Progress({
+					name = "seatbelt",
+					duration = 1500,
+					label = "Toggling seatbelt",
+					useWhileDead = false,
+					canCancel = false,
+					controlDisables = {
+						disableMovement = false,
+						disableCarMovement = false,
+						disableMouse = false,
+						disableCombat = true,
+					},
+				})
+				Citizen.Wait(500)	
 				seatbeltIsOn = not seatbeltIsOn
 			end
 		end
-
-		-- Vehicle Cruiser
-		if IsControlJustPressed(1, Keys[Config.vehicle.keys.cruiser]) and GetPedInVehicleSeat(vehicle, -1) == player and (has_value(vehiclesCars, vehicleClass) == true) then
-			
-			local vehicleSpeedSource = GetEntitySpeed(vehicle)
-
-			if vehicleCruiser == 'on' then
-				vehicleCruiser = 'off'
-				SetEntityMaxSpeed(vehicle, GetVehicleHandlingFloat(vehicle,"CHandlingData","fInitialDriveMaxFlatVel"))
-				
-			else
-				vehicleCruiser = 'on'
-				SetEntityMaxSpeed(vehicle, vehicleSpeedSource)
-			end
-		end
-
-
-
-
 
 		-- Vehicle Signal Lights
 		if IsControlJustPressed(1, Keys[Config.vehicle.keys.signalLeft]) and (has_value(vehiclesCars, vehicleClass) == true) then
@@ -659,37 +765,14 @@ Citizen.CreateThread(function()
 	end
 end)
 
-
-
-
-
-
-
-
-
-
 AddEventHandler('onClientMapStart', function()
 
 	SendNUIMessage({ action = 'ui', config = Config.ui })
 	SendNUIMessage({ action = 'setFont', url = Config.font.url, name = Config.font.name })
 	SendNUIMessage({ action = 'setLogo', value = Config.serverLogo })
-	
-	if Config.ui.showVoice == true then
-		if Config.voice.levels.current == 0 then
-			NetworkSetTalkerProximity(Config.voice.levels.default)
-		elseif Config.voice.levels.current == 1 then
-			NetworkSetTalkerProximity(Config.voice.levels.shout)
-		elseif Config.voice.levels.current == 2 then
-			NetworkSetTalkerProximity(Config.voice.levels.whisper)
-		end
-	end
 end)
 
 AddEventHandler('playerSpawned', function()
-	if Config.ui.showVoice == true then
-	    NetworkSetTalkerProximity(5.0)
-	end
-
 	HideHudComponentThisFrame(7) -- Area
 	HideHudComponentThisFrame(9) -- Street
 	HideHudComponentThisFrame(6) -- Vehicle
@@ -697,14 +780,6 @@ AddEventHandler('playerSpawned', function()
 	HideHudComponentThisFrame(4) -- MP Cash
 	HideHudComponentThisFrame(13) -- Cash changes!
 end)
-
-
-
-
-
-
-
-
 
 AddEventHandler('trew_hud_ui:setCarSignalLights', function(status)
 	local driver = GetVehiclePedIsIn(GetPlayerPed(-1), false)
@@ -770,26 +845,6 @@ AddEventHandler('trew_hud_ui:syncCarLights', function(driver, status)
 
 	end
 end)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function trewDate()
 	local timeString = nil
@@ -931,6 +986,15 @@ RegisterCommand('toggleui', function()
 		if (Config.ui.showWalletMoney == true) then
 			SendNUIMessage({ action = 'element', task = 'enable', value = 'wallet' })
 		end
+		if (Config.ui.showLocation == true) then
+			SendNUIMessage({ action = 'element', task = 'enable', value = 'locationMessage' })
+		end
+		if (Config.ui.showPostal == true) then
+			SendNUIMessage({ action = 'element', task = 'enable', value = 'postalMessage' })
+		end
+		if (Config.ui.showVoice == true) then
+			SendNUIMessage({ action = 'ui', config = Config.ui })
+		end
 	end
 
 	toggleui = not toggleui
@@ -958,4 +1022,24 @@ exports('setStatus', function(args)
 		{ name = args['name'], value = args['value'] }
 	}}
 	SendNUIMessage(playerStatus)
+end)
+
+-- text display thread
+Citizen.CreateThread(function()
+	while true do
+		Citizen.Wait(50)
+		local player = GetPlayerPed(-1)
+		if Config.ui.showPostal == true then
+			local postalMessage = nil
+
+			postalMessage = postals[nearest.i].code, nearest.d
+
+			postalMessage = string.format(
+					Locales[Config.Locale]['you_are_on_postal'],
+					postalMessage
+			)
+
+			SendNUIMessage({ action = 'setText', id = 'postal', value = postalMessage })
+		end
+	end
 end)
