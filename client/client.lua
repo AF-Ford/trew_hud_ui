@@ -216,6 +216,8 @@ local vehiclesCars = {0,1,2,3,4,5,6,7,8,9,10,11,12,17,18,19,20};
 
 local isTokovoip = true
 
+local isDead = false
+
 -- Hides TREW UI when it's on Pause Menu
 Citizen.CreateThread(function()
 
@@ -224,7 +226,7 @@ Citizen.CreateThread(function()
 	while true do
 		Citizen.Wait(0)
 
-		if IsPauseMenuActive() then -- ESC Key
+		if IsPauseMenuActive() or isDead then -- ESC Key
 			if not isPauseMenu then
 				isPauseMenu = not isPauseMenu
 				SendNUIMessage({ action = 'toggleUi', value = false })
@@ -250,6 +252,13 @@ Citizen.CreateThread(function()
 
 
 	end
+end)
+
+Citizen.CreateThread(function()
+    while(true) do
+        isDead = IsPedDeadOrDying(PlayerPedId())
+        Citizen.Wait(500)
+    end
 end)
 
 -- Location update
