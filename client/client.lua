@@ -571,47 +571,6 @@ AddEventHandler('trew_hud_ui:setInfo', function(info)
 	end
 end)
 
---Network Talking Updates
---[[
-Citizen.CreateThread(function()
-    while true do
-		if Config.ui.showVoice == true then
-			if isTokovoip == true then
-				isTalking = exports.tokovoip_script:getPlayerData(GetPlayerServerId(PlayerId()), 'voip:talking')
-				SendNUIMessage({ action = 'isTalking', value = isTalking })
-			end
-		end
-    end
-end)--]]
-
--- Voice detection and distance
-Citizen.CreateThread(function()
-
-	if Config.ui.showVoice == true then
-
-	    RequestAnimDict('facials@gen_male@variations@normal')
-	    RequestAnimDict('mp_facial')
-
-	    while true do
-	        Citizen.Wait(300)
-	        local playerID = PlayerId()
-
-			for _,player in ipairs(GetActivePlayers()) do
-				local boolTalking = exports.tokovoip_script:getPlayerData(GetPlayerServerId(PlayerId()), 'voip:talking')
-
-	            if player ~= playerID then
-	                if boolTalking then
-	                    PlayFacialAnim(GetPlayerPed(player), 'mic_chatter', 'mp_facial')
-	                elseif not boolTalking then
-	                    PlayFacialAnim(GetPlayerPed(player), 'mood_normal_1', 'facials@gen_male@variations@normal')
-	                end
-	            end
-	        end
-	    end
-
-	end
-end)
-
 Citizen.CreateThread(function()
 	if Config.ui.showVoice == true then
 		local voiceDistance = nil
@@ -970,6 +929,9 @@ RegisterCommand('toggleui', function()
 		SendNUIMessage({ action = 'element', task = 'disable', value = 'bank' })
 		SendNUIMessage({ action = 'element', task = 'disable', value = 'blackMoney' })
 		SendNUIMessage({ action = 'element', task = 'disable', value = 'wallet' })
+		SendNUIMessage({ action = 'element', task = 'disable', value = 'locationMessage' })
+		SendNUIMessage({ action = 'element', task = 'disable', value = 'postalMessage' })
+		
 	else
 		if (Config.ui.showJob == true) then
 			SendNUIMessage({ action = 'element', task = 'enable', value = 'job' })
@@ -993,7 +955,7 @@ RegisterCommand('toggleui', function()
 			SendNUIMessage({ action = 'element', task = 'enable', value = 'postalMessage' })
 		end
 		if (Config.ui.showVoice == true) then
-			SendNUIMessage({ action = 'ui', config = Config.ui })
+			SendNUIMessage({ action = 'ui', task = 'enable', config = Config.ui })
 		end
 	end
 
